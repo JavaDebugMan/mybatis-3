@@ -53,6 +53,11 @@ public class XPathParser {
     private boolean validation;
     /**
      * 用于加载本地DTD文件
+     * 默认情况下,对XML文档进行验证时,会根据XML文档开始位置指定的网址加载对应的DTD文件或者XSD文件
+     * 如果解析mybatis-config.xml这个文件时,默认联网加载http://mybatis.org/dtd/mybatis-3-config.dtd
+     * 这个DTD文件,当网络比较慢时会导致验证过程缓慢
+     * 在实践中慢慢会提前设置EntityResolver接口对象加载本地的DT文件,从而避免联网加载DTD文件
+     * XMLMapperEntityResolver是Mybatis提供的EntityResolver接口的实现类
      */
     private EntityResolver entityResolver;
     /**
@@ -144,6 +149,12 @@ public class XPathParser {
         this.document = document;
     }
 
+    /**
+     * XPathParser提供了一系列的eval*()方法用于解析boolean,long,int,short,String,Node等类型信息
+     * 他通过XPath.evaluate()方法查找指定路径的节点或属性,并进行相应的类型装换
+     *
+     * @param variables
+     */
     public void setVariables(Properties variables) {
         this.variables = variables;
     }
@@ -242,18 +253,21 @@ public class XPathParser {
     private Document createDocument(InputSource inputSource) {
         // important: this must only be called AFTER common constructor
         try {
+            //创建DocumentBuilderFactory对象
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            //对DocumentBuilderFactory进行一系列配置
             factory.setValidating(validation);
-
             factory.setNamespaceAware(false);
             factory.setIgnoringComments(true);
             factory.setIgnoringElementContentWhitespace(false);
             factory.setCoalescing(false);
             factory.setExpandEntityReferences(true);
-
+            //创建DocumentBuilder对象并进行处理
             DocumentBuilder builder = factory.newDocumentBuilder();
+            //设置entityResolver接口对象
             builder.setEntityResolver(entityResolver);
             builder.setErrorHandler(new ErrorHandler() {
+                //ErrorHandler的方法实现都是空实现
                 @Override
                 public void error(SAXParseException exception) throws SAXException {
                     throw exception;
@@ -268,6 +282,7 @@ public class XPathParser {
                 public void warning(SAXParseException exception) throws SAXException {
                 }
             });
+            //加载xml文件
             return builder.parse(inputSource);
         } catch (Exception e) {
             throw new BuilderException("Error creating document instance.  Cause: " + e, e);
